@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotel-cancellation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hotel-cancellation
+  template:
+    metadata:
+      labels:
+        app: hotel-cancellation
+    spec:
+      containers:
+        - name: hotel-cancellation
+          image: hotel-cancellation:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9696
+          readinessProbe:
+            tcpSocket:
+              port: 9696
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"

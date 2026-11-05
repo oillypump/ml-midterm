@@ -173,12 +173,11 @@ AUC and saves `model.bin`. Expected: CV AUC ≈ 0.9526 and test AUC ≈ 0.9548.
 ### 3. Run the web service locally
 
 ```bash
-uv run gunicorn --bind 0.0.0.0:9696 predict:app
+uv run uvicorn predict:app --host 0.0.0.0 --port 9696
 ```
 
-<!-- TODO: confirm once predict.py exists (Flask + gunicorn assumed) -->
-
-The service listens on port 9696 and exposes `POST /predict`.
+The service is built with FastAPI and listens on port 9696. It exposes `POST /predict`,
+and interactive API docs are available at `http://localhost:9696/docs`.
 
 ### 4. Test the service
 
@@ -237,11 +236,9 @@ Categorical values must match the training data exactly (lowercase, e.g. `meal_p
 example response :
 
 ```
-{"cancel":true,"cancel_probability":0.9995997548103333}
+{"cancel_probability": 0.9996, "cancel": true}
 
 ```
-
-### 5. Docker
 
 ### 5. Docker
 
@@ -252,11 +249,8 @@ the build and run steps.
 docker compose up --build
 ```
 
-The service is then available at `http://localhost:9696/predict`. Test it with:
-
-```bash
-uv run python predict-test.py
-```
+The service is then available at `http://localhost:9696/predict`.
+Wait until the container status changes from `starting` to `healthy`
 
 Stop it with `docker compose down`.
 

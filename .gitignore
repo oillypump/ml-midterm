@@ -2,11 +2,5 @@
 __pycache__/
 .ipynb_checkpoints/
 deliverables.md
-
-
-.venv/
-__pycache__/
 *.pyc
-.ipynb_checkpoints/
-train_raw.py
 .DS_Store

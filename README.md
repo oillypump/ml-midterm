@@ -279,7 +279,7 @@ This is a local cluster, so there is no public URL; the screenshots below show t
 deployment and the test requests.
 
 ```
-kind create cluster --name midterm
+kind create cluster --name midterm --config ./k8s/kind-config.yaml
 ```
 
 <img src="./pics/01-create-cluster.png" width="700">
@@ -315,23 +315,16 @@ kind load docker-image hotel-cancellation:v1 --name midterm
 <img src="./pics/06-load-image.png" width="700">
 
 ```
-kubectl apply -f k8s/
+kubectl apply -f ./k8s/deployment.yaml -f ./k8s/service.yaml
 ```
 
 <img src="./pics/07-apply-service.png" width="700">
 
 ```
-kubectl get pods
+kubectl get pods -o wide
 ```
 
 <img src="./pics/08-check-status.png" width="700">
-
-```
-kubectl port-forward service/hotel-cancellation 9696:9696
-
-```
-
-<img src="./pics/09-forward-port.png" width="700">
 
 - Testing
   - open docs :

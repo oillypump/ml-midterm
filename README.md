@@ -111,8 +111,10 @@ The right threshold depends on the hotel's cost of missed cancellations vs. fals
 ├── train.py            # trains the final model and saves model.bin
 ├── predict.py          # web service (TODO: Flask/FastAPI)
 ├── predict-test.py     # example request to the service (TODO)
-├── requirements.txt    # dependencies (TODO)
+├── pyproject.toml      # dependencies (managed with uv)
+├── uv.lock             # locked versions
 ├── Dockerfile          # (TODO)
+├── .gitignore
 ├── model.bin           # saved DictVectorizer + XGBoost model
 └── data/
     └── booking.csv
@@ -122,18 +124,47 @@ The right threshold depends on the hotel's cost of missed cancellations vs. fals
 
 ### 1. Environment
 
+Dependencies are managed with [uv](https://docs.astral.sh/uv/). They are declared in
+`pyproject.toml` and pinned in `uv.lock`. The project requires Python >= 3.14; uv
+downloads a matching interpreter automatically if you don't have one.
+
+Install uv (if needed):
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-<!-- TODO: adjust if you use pipenv / uv -->
+Clone the repo, then create the virtual environment (`.venv`) and install the locked
+dependencies:
+
+```bash
+git clone https://github.com/USERNAME/ml-midterm.git
+cd ml-midterm
+uv sync
+```
+
+`uv sync` also installs the `dev` group (Jupyter kernel, matplotlib, seaborn, nbconvert)
+needed for the notebook. To install only what the service needs:
+
+```bash
+uv sync --no-dev
+```
+
+Activate the environment, or skip activation and prefix commands with `uv run` (used
+below):
+
+```bash
+source .venv/bin/activate        # Linux / macOS / WSL
+# .venv\Scripts\activate         # Windows
+```
+
+To run the notebook, open `notebook.ipynb` in VS Code or JupyterLab and select the
+`.venv` interpreter as the kernel.
 
 ### 2. Train the model
 
 ```bash
-python train.py
+uv run python train.py
 ```
 
 This runs 5-fold CV, trains the final model on the full training split, prints the test
@@ -142,15 +173,17 @@ AUC and saves `model.bin`. Expected: CV AUC ≈ 0.9526 and test AUC ≈ 0.9548.
 ### 3. Run the web service locally
 
 ```bash
-# TODO: replace with your actual command, e.g.
-# python predict.py
-# or: uvicorn predict:app --host 0.0.0.0 --port 9696
+uv run gunicorn --bind 0.0.0.0:9696 predict:app
 ```
+
+<!-- TODO: confirm once predict.py exists (Flask + gunicorn assumed) -->
+
+The service listens on port 9696 and exposes `POST /predict`.
 
 ### 4. Test the service
 
 ```bash
-python predict-test.py
+uv run python predict-test.py
 ```
 
 Example request body:
@@ -175,26 +208,61 @@ Example request body:
 }
 ```
 
-Categorical values must match the training data exactly (lowercase, e.g.
-`meal_plan_1`, `room_type_1`, `online`), and `res_month` is a string (`"1"`–`"12"`).
+Example test curl :
 
-<!-- TODO: add example response format once predict.py is done -->
+```
+curl -X POST http://localhost:9696/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type_of_meal": "meal_plan_1",
+    "room_type": "room_type_1",
+    "market_segment_type": "online",
+    "res_month": "7",
+    "number_of_adults": 2,
+    "number_of_children": 0,
+    "number_of_weekend_nights": 1,
+    "number_of_week_nights": 2,
+    "car_parking_space": 0,
+    "lead_time": 200,
+    "repeated": 0,
+    "p_c": 0,
+    "p_not_c": 0,
+    "average_price": 110.0,
+    "special_requests": 0
+  }'
+```
+
+Categorical values must match the training data exactly (lowercase, e.g. `meal_plan_1`, `room_type_1`, `online`), and `res_month` is a string (`"1"`–`"12"`).
+
+example response :
+
+```
+{"cancel":true,"cancel_probability":0.9995997548103333}
+
+```
 
 ### 5. Docker
 
+### 5. Docker
+
+The service is containerized with the provided `Dockerfile`, and `compose.yaml` wraps
+the build and run steps.
+
 ```bash
-# TODO: confirm image name and port
+docker compose up --build
+```
+
+The service is then available at `http://localhost:9696/predict`. Test it with:
+
+```bash
+uv run python predict-test.py
+```
+
+Stop it with `docker compose down`.
+
+Without Compose:
+
+```bash
 docker build -t hotel-cancellation .
 docker run -it --rm -p 9696:9696 hotel-cancellation
 ```
-
-### 6. Cloud deployment
-
-<!-- TODO: platform, deployment steps, public URL or screenshot/video -->
-
-## Reproducibility
-
-- Dataset download instructions are above (or the dataset is committed in `data/`).
-- The notebook runs top to bottom (Restart & Run All) without errors.
-- `train.py` runs end to end from the raw CSV.
-- Fixed random seeds (`random_state=1`) are used for splits, K-Fold and models.

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 MODEL_FILE = "model.bin"
+THRESHOLD = 0.5
 
 with open(MODEL_FILE, "rb") as f_in:
     dv, model = pickle.load(f_in)
@@ -39,4 +40,4 @@ class Prediction(BaseModel):
 def predict(booking: Booking):
     X = dv.transform([booking.model_dump()])
     prob = float(model.predict_proba(X)[0, 1])
-    return Prediction(cancel_probability=prob, cancel=prob >= 0.5)
+    return Prediction(cancel_probability=prob, cancel=prob >= THRESHOLD)

@@ -84,7 +84,16 @@ deviation); XGBoost was chosen for the highest mean AUC and consistent results a
 both evaluation methods. Logistic Regression is clearly worse, mainly because it cannot
 capture the non-linear effect of `lead_time`.
 
-### Final evaluation (test set, evaluated once)
+### Threshold and final evaluation
+
+The decision threshold was chosen from out-of-fold predictions on the training data
+(precision/recall/F1 for thresholds 0.2-0.7). F1 is highest at 0.5 and nearly flat
+between 0.4 and 0.5, so the default 0.5 is used. A lower threshold increases recall at
+the cost of precision, and the right value depends on the hotel's cost of missed
+cancellations vs. false alarms.
+
+The test set was not used to choose the model, parameters, features or threshold. It was
+only used to report the final performance:
 
 | Metric    | Value (threshold 0.5) |
 | --------- | --------------------- |
@@ -109,6 +118,7 @@ The right threshold depends on the hotel's cost of missed cancellations vs. fals
 .
 ├── k8s/
 │   ├── deployment.yaml
+│   ├── kind-config.yaml
 │   └── service.yaml
 ├── pics/                  # screenshots of the Kubernetes deployment
 ├── README.md

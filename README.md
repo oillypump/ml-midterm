@@ -34,6 +34,9 @@ by the hotel depending on the cost of false positives vs. false negatives).
 
 ### Getting the data
 
+The dataset is included in the repository as `data/booking.csv`. To download it again
+from Kaggle:
+
 ```bash
 mkdir -p data
 curl -L -o data/hotel-booking-cancellation-prediction.zip \
@@ -42,8 +45,6 @@ unzip -o data/hotel-booking-cancellation-prediction.zip -d data/
 ```
 
 The file used by the notebook and `train.py` is `data/booking.csv`.
-
-<!-- TODO: if the dataset is committed to the repo, replace this section accordingly -->
 
 ## Exploratory data analysis (summary)
 
@@ -59,8 +60,8 @@ was kept untouched until the final evaluation.
 - Month of reservation shows large variation, but the data covers roughly Oct 2017 to
   Sep 2018 and the monthly pattern moves together with average lead time, so seasonality
   cannot be confirmed.
-- Two rows dated 2015/2016 were treated as anomalies; the invalid date `2018-2-29` was
-  corrected to `2018-02-28`.
+- Two rows dated 2015/2016 look anomalous but were left in the data (negligible
+  impact); the invalid date `2018-2-29` was corrected to `2018-02-28`.
 
 ## Modeling
 
@@ -106,16 +107,21 @@ The right threshold depends on the hotel's cost of missed cancellations vs. fals
 
 ```
 .
+├── k8s/
+│   ├── deployment.yaml
+│   └── service.yaml
+├── pics/                  # screenshots of the Kubernetes deployment
 ├── README.md
-├── notebook.ipynb      # data preparation, EDA, model selection and tuning
-├── train.py            # trains the final model and saves model.bin
-├── predict.py          # web service (TODO: Flask/FastAPI)
-├── predict-test.py     # example request to the service (TODO)
-├── pyproject.toml      # dependencies (managed with uv)
-├── uv.lock             # locked versions
-├── Dockerfile          # (TODO)
+├── notebook.ipynb         # data preparation, EDA, model selection and tuning
+├── train.py               # trains the final model and saves model.bin
+├── predict.py             # FastAPI web service
+├── model.bin              # saved DictVectorizer + XGBoost model
+├── pyproject.toml         # dependencies (managed with uv)
+├── uv.lock                # locked versions
+├── Dockerfile
+├── docker-compose.yaml
+├── .dockerignore
 ├── .gitignore
-├── model.bin           # saved DictVectorizer + XGBoost model
 └── data/
     └── booking.csv
 ```
@@ -138,7 +144,7 @@ Clone the repo, then create the virtual environment (`.venv`) and install the lo
 dependencies:
 
 ```bash
-git clone https://github.com/USERNAME/ml-midterm.git
+git clone https://github.com/oillypump/ml-midterm.git
 cd ml-midterm
 uv sync
 ```
@@ -181,11 +187,9 @@ and interactive API docs are available at `http://localhost:9696/docs`.
 
 ### 4. Test the service
 
-```bash
-uv run python predict-test.py
-```
+Send a request with `curl`, or use the interactive docs at `http://localhost:9696/docs`.
 
-Example request body:
+example data
 
 ```json
 {
@@ -242,14 +246,19 @@ example response :
 
 ### 5. Docker
 
-The service is containerized with the provided `Dockerfile`, and `compose.yaml` wraps
-the build and run steps.
+The service is containerized with the provided `Dockerfile`, and `docker-compose.yaml`
+wraps the build and run steps.
 
 ```bash
-docker compose up --build
+docker compose up -d --build
 ```
 
 The service is then available at `http://localhost:9696/predict`.
+
+```bash
+docker ps
+```
+
 Wait until the container status changes from `starting` to `healthy`
 
 Stop it with `docker compose down`.
@@ -260,3 +269,86 @@ Without Compose:
 docker build -t hotel-cancellation .
 docker run -it --rm -p 9696:9696 hotel-cancellation
 ```
+
+### 6. Local Kubernetes Deployment (kind)
+
+Prerequisites: Docker, [kind](https://kind.sigs.k8s.io/) and `kubectl`.
+The Kubernetes manifests are in `k8s/`.
+
+This is a local cluster, so there is no public URL; the screenshots below show the
+deployment and the test requests.
+
+```
+kind create cluster --name midterm
+```
+
+<img src="./pics/01-create-cluster.png" width="700">
+
+```
+kubectl cluster-info --context kind-midterm
+```
+
+<img src="./pics/02-cluster-info.png" width="700">
+
+```
+kubectl get nodes
+```
+
+<img src="./pics/03-get-nodes.png" width="700">
+
+```
+docker images | grep -E "hotel|midterm"
+```
+
+<img src="./pics/04-check-imagename.png" width="700">
+
+```
+docker tag hotel-cancellation:latest hotel-cancellation:v1
+```
+
+<img src="./pics/05-change-imagetag.png" width="700">
+
+```
+kind load docker-image hotel-cancellation:v1 --name midterm
+```
+
+<img src="./pics/06-load-image.png" width="700">
+
+```
+kubectl apply -f k8s/
+```
+
+<img src="./pics/07-apply-service.png" width="700">
+
+```
+kubectl get pods
+```
+
+<img src="./pics/08-check-status.png" width="700">
+
+```
+kubectl port-forward service/hotel-cancellation 9696:9696
+
+```
+
+<img src="./pics/09-forward-port.png" width="700">
+
+- Testing
+  - open docs :
+
+    <img src="./pics/10-open-webdocs.png" width="700">
+
+  - test curl1:
+
+    <img src="./pics/11-test-curl1.png" width="700">
+
+  - test curl2:
+
+    <img src="./pics/12-test-curl2.png" width="700">
+
+- Cleanup
+
+  ```
+  kubectl delete -f k8s/
+  kind delete cluster --name midterm
+  ```

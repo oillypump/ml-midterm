@@ -102,9 +102,6 @@ only used to report the final performance:
 | Recall    | 0.802                 |
 | F1        | 0.833                 |
 
-Lowering the threshold increases recall (0.875 at 0.3) at the cost of precision (0.786).
-The right threshold depends on the hotel's cost of missed cancellations vs. false alarms.
-
 ### Limitations
 
 - Random train/validation/test split; performance on a future period may be lower.
@@ -116,24 +113,22 @@ The right threshold depends on the hotel's cost of missed cancellations vs. fals
 
 ```
 .
-├── k8s/
+├── Dockerfile
+├── README.md
+├── data
+│   └── booking.csv
+├── docker-compose.yaml
+├── k8s
 │   ├── deployment.yaml
 │   ├── kind-config.yaml
 │   └── service.yaml
-├── pics/                  # screenshots of the Kubernetes deployment
-├── README.md
-├── notebook.ipynb         # data preparation, EDA, model selection and tuning
-├── train.py               # trains the final model and saves model.bin
-├── predict.py             # FastAPI web service
-├── model.bin              # saved DictVectorizer + XGBoost model
-├── pyproject.toml         # dependencies (managed with uv)
-├── uv.lock                # locked versions
-├── Dockerfile
-├── docker-compose.yaml
-├── .dockerignore
-├── .gitignore
-└── data/
-    └── booking.csv
+├── model.bin
+├── notebook.ipynb
+├── pics/
+├── predict.py
+├── pyproject.toml
+├── train.py
+└── uv.lock
 ```
 
 ## How to run
@@ -288,6 +283,10 @@ The Kubernetes manifests are in `k8s/`.
 This is a local cluster, so there is no public URL; the screenshots below show the
 deployment and the test requests.
 
+`kind-config.yaml` maps port 9696 of the cluster to `localhost:9696` (NodePort service),
+so no `port-forward` is needed. Stop `docker compose` first if it is running, otherwise
+port 9696 is already in use.
+
 ```
 kind create cluster --name midterm --config ./k8s/kind-config.yaml
 ```
@@ -313,6 +312,7 @@ docker images | grep -E "hotel|midterm"
 <img src="./pics/04-check-imagename.png" width="700">
 
 ```
+docker build -t hotel-cancellation:latest .
 docker tag hotel-cancellation:latest hotel-cancellation:v1
 ```
 
@@ -352,6 +352,6 @@ kubectl get pods -o wide
 - Cleanup
 
   ```
-  kubectl delete -f k8s/
+  kubectl delete -f ./k8s/deployment.yaml -f ./k8s/service.yaml
   kind delete cluster --name midterm
   ```
